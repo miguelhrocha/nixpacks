@@ -56,6 +56,19 @@ impl Provider for GolangProvider {
 
         plan.add_phase(setup);
 
+        if app.includes_file("go.work") {
+            // The value of GOWORK is set to "auto" by default to find a go.work file in any directory.
+            // This is the standard behavior of the Go toolchain. If the user sets the value to off 
+            // the go.work file will be ignored.
+            // https://go.dev/ref/mod#workspaces
+            let gowork = env.get_variable("GOWORK").unwrap_or("");
+
+            if gowork != "off" {
+                let sync = Phase::install(Some("go work sync".to_string()));
+                plan.add_phase(sync);
+            }
+        }
+
         if app.includes_file("go.mod") {
             let mut install = Phase::install(Some("go mod download".to_string()));
             install.add_cache_directory(GO_BUILD_CACHE_DIR.to_string());
@@ -137,6 +150,8 @@ fn version_number_to_archive(version: &str) -> Option<String> {
 
 #[cfg(test)]
 mod test {
+    use anyhow::Ok;
+
     use super::*;
 
     #[test]
